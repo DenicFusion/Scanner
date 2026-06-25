@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>ID Verification Scanner</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F8FA;--surface:#FFFFFF;--card:#1A1D23;
+  --blue:#2563EB;--green:#16A34A;--red:#DC2626;--amber:#D97706;
+  --t1:#0F172A;--t2:#475569;--t3:#94A3B8;--border:#E2E8F0;
+  --r:16px;--font:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+#app{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 0 48px}
+
+/* Header */
+.hdr{width:100%;max-width:480px;padding:20px 24px 0;display:flex;align-items:center;gap:12px}
+.hdr-logo{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.hdr-logo svg{width:18px;height:18px;fill:#fff}
+.hdr-title{font-size:17px;font-weight:600;letter-spacing:-.3px}
+
+/* Steps */
+.steps{width:100%;max-width:480px;padding:16px 24px 0;display:flex;align-items:center}
+.step-item{display:flex;align-items:center;gap:8px;flex:1}
+.sc{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;transition:all .3s}
+.sc.done{background:var(--green);color:#fff}
+.sc.active{background:var(--blue);color:#fff}
+.sc.idle{background:var(--border);color:var(--t3)}
+.sl{font-size:11px;font-weight:500;color:var(--t3);white-space:nowrap;transition:color .3s}
+.sl.active{color:var(--blue)}.sl.done{color:var(--green)}
+.sline{flex:1;height:1px;background:var(--border);margin:0 8px;min-width:16px;transition:background .3s}
+.sline.done{background:var(--green)}
+
+/* Screens */
+.screen{display:none;width:100%;max-width:480px;padding:16px 24px 0;flex-direction:column;align-items:center;gap:14px;animation:fadeUp .3s ease}
+.screen.active{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Buttons */
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:active{background:#1D4ED8;transform:scale(.98)}
+.btn-ghost{background:transparent;color:var(--t2);border:1.5px solid var(--border)}
+.btn-ghost:active{background:var(--bg)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:active{background:#B91C1C;transform:scale(.98)}
+
+/* Idle */
+.idle-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.idle-icon{width:68px;height:68px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-radius:18px;display:flex;align-items:center;justify-content:center}
+.idle-icon svg{width:34px;height:34px}
+.idle-title{font-size:21px;font-weight:700;letter-spacing:-.5px}
+.idle-sub{font-size:13px;color:var(--t2);line-height:1.6;max-width:280px}
+.cklist{width:100%;display:flex;flex-direction:column;gap:9px;text-align:left}
+.ck-item{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--t2);line-height:1.4}
+.ck-dot{width:18px;height:18px;border-radius:50%;background:#EFF6FF;border:1.5px solid #BFDBFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ck-dot svg{width:10px;height:10px;stroke:var(--blue);fill:none;stroke-width:2.5}
+.api-warn{width:100%;padding:11px 13px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;font-size:12px;color:#92400E;line-height:1.5;display:none}
+
+/* Permission */
+.perm-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px 20px;display:flex;flex-direction:column;gap:14px}
+.perm-row{display:flex;align-items:center;gap:13px}
+.perm-icon{width:46px;height:46px;border-radius:11px;background:#FFF7ED;border:1px solid #FED7AA;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.perm-icon svg{width:22px;height:22px}
+.pt{font-size:15px;font-weight:600}
+.ps{font-size:13px;color:var(--t2);margin-top:2px;line-height:1.4}
+.divider{height:1px;background:var(--border)}
+.perm-note{font-size:13px;color:var(--t2);line-height:1.6}
+
+/* Scanner wrapper */
+.scan-wrap{width:100%;background:var(--card);border-radius:var(--r);overflow:hidden}
+
+/* Scanner header */
+.scan-hdr{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.scan-pill{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border-radius:20px;padding:5px 11px}
+.pill-flag{font-size:15px}
+.pill-txt{font-size:12px;font-weight:600;color:rgba(255,255,255,.9)}
+.snd-btn{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s}
+.snd-btn svg{width:15px;height:15px}
+
+.scan-side-lbl{text-align:center;font-size:10px;font-weight:700;letter-spacing:1.2px;color:rgba(255,255,255,.45);text-transform:uppercase;padding-bottom:6px}
+
+/* Viewport */
+.vp-wrap{position:relative;width:calc(100% - 20px);margin:0 10px;aspect-ratio:1.586;border-radius:10px;overflow:hidden;background:#000}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+/* AI badge */
+.ai-badge{
+  position:absolute;top:9px;left:50%;transform:translateX(-50%);
+  z-index:9;display:flex;align-items:center;gap:6px;
+  padding:5px 11px;border-radius:20px;
+  font-size:11px;font-weight:700;letter-spacing:.2px;white-space:nowrap;
+  backdrop-filter:blur(8px);pointer-events:none;
+  opacity:0;transition:opacity .3s,background .3s;
+}
+.ai-badge.show{opacity:1}
+.ai-badge.searching{background:rgba(20,20,30,.75);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.65)}
+.ai-badge.confirmed{background:rgba(22,163,74,.9);border:1px solid rgba(134,239,172,.4);color:#fff}
+.ai-badge.rejected{background:rgba(220,38,38,.88);border:1px solid rgba(252,165,165,.4);color:#fff;animation:shake .35s ease}
+@keyframes shake{0%,100%{transform:translateX(-50%)}20%{transform:translateX(calc(-50% - 5px))}60%{transform:translateX(calc(-50% + 5px))}}
+.badge-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.searching .badge-dot{background:rgba(255,255,255,.45);animation:pulse 1.2s infinite}
+.confirmed .badge-dot{background:#86EFAC}
+.rejected  .badge-dot{background:#FCA5A5}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* Keyword chips */
+.kw-chips{position:absolute;bottom:8px;left:7px;right:7px;z-index:8;display:flex;flex-wrap:wrap;gap:4px;pointer-events:none;opacity:0;transition:opacity .4s}
+.kw-chips.show{opacity:1}
+.kw-chip{background:rgba(22,163,74,.82);border:1px solid rgba(134,239,172,.4);color:#fff;font-size:10px;font-weight:600;padding:3px 7px;border-radius:9px;animation:chipPop .3s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes chipPop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* Corner guides */
+.corners{position:absolute;inset:0;pointer-events:none;z-index:2}
+.corner{position:absolute;width:22px;height:22px;border-color:rgba(255,255,255,.35);border-style:solid;transition:border-color .35s,box-shadow .35s}
+.corner.tl{top:9px;left:9px;border-width:2.5px 0 0 2.5px;border-radius:4px 0 0 0}
+.corner.tr{top:9px;right:9px;border-width:2.5px 2.5px 0 0;border-radius:0 4px 0 0}
+.corner.bl{bottom:9px;left:9px;border-width:0 0 2.5px 2.5px;border-radius:0 0 0 4px}
+.corner.br{bottom:9px;right:9px;border-width:0 2.5px 2.5px 0;border-radius:0 0 4px 0}
+.corners.ready .corner{border-color:#22C55E;box-shadow:0 0 8px rgba(34,197,94,.6);animation:cPulse 1.1s ease-in-out infinite}
+@keyframes cPulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* Scan laser */
+.laser{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#3B82F6 30%,#93C5FD 50%,#3B82F6 70%,transparent);box-shadow:0 0 8px rgba(59,130,246,.8);z-index:3;pointer-events:none;animation:laserSweep 2.2s ease-in-out infinite;opacity:0;transition:opacity .3s}
+.laser.show{opacity:1}
+@keyframes laserSweep{0%{top:6%}50%{top:88%}100%{top:6%}}
+
+/* Countdown overlay */
+.cd-overlay{position:absolute;inset:0;z-index:11;background:rgba(0,0,0,.52);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;opacity:0;pointer-events:none;transition:opacity .25s}
+.cd-overlay.show{opacity:1;pointer-events:all}
+.cd-checks{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.cd-check{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#fff}
+.cd-check svg{width:15px;height:15px;stroke:#22C55E;fill:none;stroke-width:2.5;flex-shrink:0}
+.cd-circle{width:78px;height:78px;position:relative;display:flex;align-items:center;justify-content:center;margin-top:4px}
+.cd-circle svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.cd-track{fill:none;stroke:rgba(255,255,255,.12);stroke-width:4}
+.cd-arc{fill:none;stroke:#22C55E;stroke-width:4;stroke-linecap:round;stroke-dasharray:219.9;stroke-dashoffset:219.9;transition:stroke-dashoffset 1s linear}
+.cd-num{font-size:28px;font-weight:700;color:#fff;position:relative;z-index:1;letter-spacing:-1px}
+.cd-lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,.65);letter-spacing:.4px}
+
+/* Flash */
+.flash{position:absolute;inset:0;z-index:20;background:#fff;opacity:0;pointer-events:none;transition:opacity .07s}
+.flash.pop{opacity:.92}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:calc(100% - 20px);margin:8px 10px 0}
+.met{background:rgba(255,255,255,.055);border-radius:8px;padding:7px 9px}
+.met-lbl{font-size:10px;font-weight:500;color:rgba(255,255,255,.38);letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
+.met-row{display:flex;align-items:center;gap:6px}
+.met-bar{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+.met-fill{height:100%;border-radius:2px;transition:width .18s ease,background .3s}
+.met-val{font-size:11px;font-weight:600;color:rgba(255,255,255,.8);min-width:28px;text-align:right}
+
+/* Wrong object banner */
+.wrong-banner{width:calc(100% - 20px);margin:0 10px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:9px;padding:10px 13px;display:none;align-items:flex-start;gap:9px;animation:fadeUp .3s ease}
+.wrong-banner.show{display:flex}
+.wb-icon{font-size:17px;flex-shrink:0;margin-top:1px}
+.wb-title{font-size:13px;font-weight:700;color:#FCA5A5}
+.wb-sub{font-size:12px;color:rgba(255,255,255,.48);margin-top:2px;line-height:1.4}
+
+/* Flip prompt */
+.flip-prompt{width:calc(100% - 20px);margin:0 10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);border-radius:9px;padding:11px 13px;display:none;align-items:center;gap:9px;animation:fadeUp .3s ease}
+.flip-prompt.show{display:flex}
+.fp-icon{font-size:20px}
+.fp-txt{font-size:13px;font-weight:500;color:rgba(255,255,255,.85);line-height:1.4}
+
+/* Scanner footer */
+.scan-foot{padding:12px 14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sf-block{flex:1}
+.sf-main{font-size:13px;font-weight:600;color:#fff;transition:color .3s}
+.sf-hint{font-size:11px;color:rgba(255,255,255,.42);margin-top:3px;line-height:1.4}
+.shutter{width:50px;height:50px;flex-shrink:0;border-radius:50%;border:3px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;position:relative;transition:border-color .35s}
+.shutter.armed{border-color:#22C55E;box-shadow:0 0 12px rgba(34,197,94,.4)}
+.shutter svg{width:50px;height:50px;position:absolute;transform:rotate(-90deg)}
+.sh-track{fill:none;stroke:rgba(255,255,255,.1);stroke-width:3}
+.sh-arc{fill:none;stroke:#22C55E;stroke-width:3;stroke-linecap:round;stroke-dasharray:125.6;stroke-dashoffset:125.6;transition:stroke-dashoffset .22s ease}
+.sh-cnt{font-size:15px;font-weight:700;color:#fff;position:relative;z-index:1}
+
+/* Previews */
+.previews{display:flex;gap:10px;width:100%}
+.prev-thumb{flex:1;aspect-ratio:1.586;border-radius:8px;background:var(--bg);border:1.5px solid var(--border);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+.prev-thumb img{width:100%;height:100%;object-fit:cover}
+.prev-lbl{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;font-weight:600;letter-spacing:.4px;padding:2px 6px;border-radius:4px;text-transform:uppercase}
+.prev-ph{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--t3)}
+.prev-ph svg{width:20px;height:20px;stroke:currentColor;fill:none}
+.prev-ph span{font-size:10px}
+
+/* Processing */
+.proc-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:36px 20px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.spinner{width:52px;height:52px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.proc-sub{font-size:14px;color:var(--t2);line-height:1.5;max-width:260px}
+.proc-steps{width:100%;display:flex;flex-direction:column;gap:9px;text-align:left}
+.pstep{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--t2);padding:9px 13px;border-radius:9px;background:var(--bg);border:1px solid var(--border);transition:all .3s}
+.pstep.active{color:var(--blue);border-color:#BFDBFE;background:#EFF6FF}
+.pstep.done{color:var(--green);border-color:#BBF7D0;background:#F0FDF4}
+.pstep-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ps-spin{width:13px;height:13px;border:2px solid #BFDBFE;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+
+/* Error */
+.err-card{width:100%;background:var(--surface);border:1.5px solid #FCA5A5;border-radius:var(--r);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.err-icon{width:60px;height:60px;border-radius:50%;background:#FEF2F2;display:flex;align-items:center;justify-content:center}
+.err-title{font-size:18px;font-weight:700;color:var(--red)}
+.err-msg{font-size:14px;color:var(--t2);line-height:1.6;max-width:280px}
+
+/* Success */
+.succ-card{width:100%;background:var(--surface);border:1.5px solid #86EFAC;border-radius:var(--r);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.succ-icon{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#22C55E,#16A34A);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(34,197,94,.35);animation:succPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes succPop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.succ-icon svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:2.5}
+.succ-title{font-size:21px;font-weight:700;letter-spacing:-.5px}
+.succ-sub{font-size:14px;color:var(--t2);line-height:1.6;max-width:280px}
+.ocr-card{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:11px;overflow:hidden;display:none}
+.ocr-hdr{padding:9px 13px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.4px;text-transform:uppercase}
+.ocr-grid{display:grid;grid-template-columns:1fr 1fr}
+.ocr-f{padding:9px 13px;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.ocr-f:nth-child(even){border-right:none}
+.ocr-fl{font-size:10px;color:var(--t3);font-weight:500;margin-bottom:2px}
+.ocr-fv{font-size:13px;font-weight:600;color:var(--t1)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-logo"><svg viewBox="0 0 20 20"><path d="M10 2L2 7v6l8 5 8-5V7L10 2z"/></svg></div>
+    <span class="hdr-title">Identity Verification</span>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step-item">
+      <div class="sc active" id="s1c">1</div>
+      <span class="sl active" id="s1l">Front</span>
+    </div>
+    <div class="sline" id="line1"></div>
+    <div class="step-item">
+      <div class="sc idle" id="s2c">2</div>
+      <span class="sl" id="s2l">Back</span>
+    </div>
+    <div class="sline" id="line2"></div>
+    <div class="step-item">
+      <div class="sc idle" id="s3c">✓</div>
+      <span class="sl" id="s3l">Verify</span>
+    </div>
+  </div>
+
+  <!-- IDLE -->
+  <div class="screen active" id="screen-idle">
+    <div class="idle-card">
+      <div class="idle-icon">
+        <svg viewBox="0 0 36 36" fill="none" stroke="#2563EB" stroke-width="1.8">
+          <rect x="4" y="8" width="28" height="20" rx="3"/>
+          <circle cx="13" cy="16" r="3"/>
+          <path d="M20 13h7M20 18h7M8 25h20"/>
+        </svg>
+      </div>
+      <div>
+        <div class="idle-title">Scan your ID card</div>
+        <div class="idle-sub" style="margin-top:5px">Our AI will watch the live feed and auto-capture both sides when the card is perfectly positioned.</div>
+      </div>
+      <div class="cklist">
+        <div class="ck-item"><div class="ck-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>Use good lighting — avoid shadows on the card</div>
+        <div class="ck-item"><div class="ck-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>Hold the card flat — all four corners in frame</div>
+        <div class="ck-item"><div class="ck-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>Remove any plastic sleeve or cover</div>
+        <div class="ck-item"><div class="ck-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>The AI will confirm your card before capturing</div>
+      </div>
+      <button class="btn btn-primary" onclick="UI.showPerm()">Start scanning →</button>
+    </div>
+    <div class="api-warn" id="api-warn">
+      <strong>⚠️ Gemini API key missing</strong><br>
+      Open the file and set <code>GEMINI_API_KEY</code> near the top of the script. The scanner requires it to detect ID cards.
+    </div>
+  </div>
+
+  <!-- PERMISSION -->
+  <div class="screen" id="screen-perm">
+    <div class="perm-card">
+      <div class="perm-row">
+        <div class="perm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="1.8">
+            <path d="M12 2a8 8 0 0 0-8 8v1a3 3 0 0 0 0 6h1m14 0h1a3 3 0 0 0 0-6v-1a8 8 0 0 0-8-8z"/>
+            <circle cx="12" cy="13" r="2.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="pt">Camera access required</div>
+          <div class="ps">The scanner needs your rear camera. No video is recorded or stored.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="perm-note">When prompted, tap <strong>Allow</strong>. If you see "Don't allow", choose <em>Allow this time</em> instead.</div>
+      <button class="btn btn-primary" onclick="Scanner.open()">Open camera</button>
+      <button class="btn btn-ghost" onclick="UI.show('screen-idle')">Go back</button>
+    </div>
+  </div>
+
+  <!-- SCANNER -->
+  <div class="screen" id="screen-scan">
+
+    <!-- Preview strip -->
+    <div class="previews">
+      <div class="prev-thumb" id="prev-front">
+        <div class="prev-ph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="1.5"/></svg><span>Front</span></div>
+      </div>
+      <div class="prev-thumb" id="prev-back">
+        <div class="prev-ph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="13" x2="13" y2="13"/></svg><span>Back</span></div>
+      </div>
+    </div>
+
+    <div class="scan-wrap">
+      <!-- Top bar -->
+      <div class="scan-hdr">
+        <div class="scan-pill">
+          <span class="pill-flag">🪪</span>
+          <span class="pill-txt" id="pill-txt">National ID · Front Side</span>
+        </div>
+        <button class="snd-btn" onclick="Scanner.toggleSound()">
+          <svg id="snd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="scan-side-lbl" id="side-lbl">SCANNING FRONT SIDE</div>
+
+      <!-- Camera -->
+      <div class="vp-wrap">
+        <video id="video" autoplay playsinline muted></video>
+
+        <!-- AI badge -->
+        <div class="ai-badge searching" id="ai-badge">
+          <div class="badge-dot"></div>
+          <span id="ai-txt">AI scanning for ID card…</span>
+        </div>
+
+        <!-- Keyword chips -->
+        <div class="kw-chips" id="kw-chips"></div>
+
+        <!-- Corners -->
+        <div class="corners" id="corners">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+        </div>
+
+        <!-- Laser -->
+        <div class="laser" id="laser"></div>
+
+        <!-- Countdown -->
+        <div class="cd-overlay" id="cd-overlay">
+          <div class="cd-checks">
+            <div class="cd-check"><svg viewBox="0 0 15 15"><polyline points="2,7 5.5,11 13,3"/></svg>ID card confirmed by AI</div>
+            <div class="cd-check"><svg viewBox="0 0 15 15"><polyline points="2,7 5.5,11 13,3"/></svg><span id="cd-side-txt">Front side verified</span></div>
+            <div class="cd-check"><svg viewBox="0 0 15 15"><polyline points="2,7 5.5,11 13,3"/></svg>Image sharp &amp; readable</div>
+          </div>
+          <div class="cd-circle">
+            <svg viewBox="0 0 78 78" width="78" height="78">
+              <circle class="cd-track" cx="39" cy="39" r="35"/>
+              <circle class="cd-arc" id="cd-arc" cx="39" cy="39" r="35"/>
+            </svg>
+            <div class="cd-num" id="cd-num">3</div>
+          </div>
+          <div class="cd-lbl">Capturing in…</div>
+        </div>
+
+        <!-- Flash -->
+        <div class="flash" id="flash"></div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics">
+        <div class="met"><div class="met-lbl">Sharpness</div><div class="met-row"><div class="met-bar"><div class="met-fill" id="m-sharp"></div></div><div class="met-val" id="v-sharp">0%</div></div></div>
+        <div class="met"><div class="met-lbl">Glare</div><div class="met-row"><div class="met-bar"><div class="met-fill" id="m-glare"></div></div><div class="met-val" id="v-glare">0%</div></div></div>
+        <div class="met"><div class="met-lbl">Alignment</div><div class="met-row"><div class="met-bar"><div class="met-fill" id="m-align"></div></div><div class="met-val" id="v-align">0%</div></div></div>
+        <div class="met"><div class="met-lbl">Brightness</div><div class="met-row"><div class="met-bar"><div class="met-fill" id="m-bright"></div></div><div class="met-val" id="v-bright">0%</div></div></div>
+      </div>
+
+      <!-- Wrong object banner -->
+      <div class="wrong-banner" id="wrong-banner">
+        <div class="wb-icon">⚠️</div>
+        <div><div class="wb-title" id="wb-title">Not an ID card</div><div class="wb-sub" id="wb-sub">Please show your government-issued ID card</div></div>
+      </div>
+
+      <!-- Flip prompt -->
+      <div class="flip-prompt" id="flip-prompt">
+        <div class="fp-icon">🔄</div>
+        <div class="fp-txt"><strong style="color:#22C55E">Front captured.</strong> Now flip your card and scan the back side.</div>
+      </div>
+
+      <!-- Footer -->
+      <div class="scan-foot">
+        <div class="sf-block">
+          <div class="sf-main" id="sf-main">Searching for ID card…</div>
+          <div class="sf-hint" id="sf-hint">Point your camera at your ID card</div>
+        </div>
+        <div class="shutter" id="shutter">
+          <svg viewBox="0 0 50 50" width="50" height="50">
+            <circle class="sh-track" cx="25" cy="25" r="20"/>
+            <circle class="sh-arc" id="sh-arc" cx="25" cy="25" r="20"/>
+          </svg>
+          <span class="sh-cnt" id="sh-cnt">–</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROCESSING -->
+  <div class="screen" id="screen-proc">
+    <div class="proc-card">
+      <div class="spinner"></div>
+      <div class="proc-title">Verifying document</div>
+      <div class="proc-sub">AI is reading your card details. Takes a few seconds.</div>
+      <div class="proc-steps">
+        <div class="pstep" id="ps1"><div class="pstep-icon"><div class="ps-spin"></div></div>Uploading images securely</div>
+        <div class="pstep" id="ps2"><div class="pstep-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6.5" cy="6.5" r="5"/></svg></div>Reading document fields</div>
+        <div class="pstep" id="ps3"><div class="pstep-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6.5" cy="6.5" r="5"/></svg></div>Verifying authenticity</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="screen" id="screen-err">
+    <div class="err-card">
+      <div class="err-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      <div class="err-title">Couldn't verify</div>
+      <div class="err-msg" id="err-msg">Something went wrong. Please try again.</div>
+      <button class="btn btn-danger" onclick="Scanner.retake()">Retake photo</button>
+      <button class="btn btn-ghost" onclick="Scanner.reset()">Start over</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="screen" id="screen-succ">
+    <div class="succ-card">
+      <div class="succ-icon"><svg viewBox="0 0 36 36"><polyline points="6,18 14,26 30,10"/></svg></div>
+      <div class="succ-title">Verification complete</div>
+      <div class="succ-sub">Your identity has been confirmed. Withdrawal will be processed within 24 hours.</div>
+      <div class="previews" style="width:100%">
+        <div class="prev-thumb" id="succ-front"><div class="prev-ph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/></svg><span>Front</span></div></div>
+        <div class="prev-thumb" id="succ-back"><div class="prev-ph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/></svg><span>Back</span></div></div>
+      </div>
+      <div class="ocr-card" id="ocr-card">
+        <div class="ocr-hdr">Extracted information</div>
+        <div class="ocr-grid" id="ocr-grid"></div>
+      </div>
+      <button class="btn btn-primary" onclick="Scanner.reset()" style="margin-top:4px">Done</button>
+    </div>
+  </div>
+
+</div>
+<canvas id="cvs" style="display:none"></canvas>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG — edit only here
+// ═══════════════════════════════════════════════════════════════
+const CFG = {
+  GEMINI_KEY   : 'AIzaSyCoxQxfnG0KQMN_3ugubs2eay8Nu1hZmic',    // ← paste your key: 'AIza...'
+  GEMINI_MODEL : 'gemini-2.5-flash-preview-05-20',
+  SHARP_MIN    : 78,    // sharpness gate (0-100)
+  GLARE_MIN    : 75,    // glare gate    (100 = no glare)
+  BRIGHT_MIN   : 25,    // brightness minimum (very lenient)
+  STEADY_MS    : 1200,  // hold-still window before countdown
+  CD_SECS      : 3,     // countdown length
+  AI_INTERVAL  : 3000,  // ms between AI live-check calls
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE — single source of truth, never touched directly outside State.*
+// ═══════════════════════════════════════════════════════════════
+const State = {
+  side         : 'front',  // 'front' | 'back'
+  stream       : null,
+  raf          : 0,
+  aiTimer      : null,
+  cdTimer      : null,
+  captureFlag  : false,    // true while capture is in progress
+  steadySince  : null,
+  soundOn      : true,
+  aiState      : 'idle',   // 'idle' | 'busy' | 'confirmed' | 'rejected' | 'unsure'
+  aiLabel      : '',       // e.g. "National ID"
+  aiKeywords   : [],
+  frontB64     : null,
+  backB64      : null,
+
+  reset() {
+    this.side       = 'front';
+    this.captureFlag = false;
+    this.steadySince = null;
+    this.frontB64   = null;
+    this.backB64    = null;
+    this.resetAI();
+  },
+  resetAI() {
+    this.aiState    = 'idle';
+    this.aiLabel    = '';
+    this.aiKeywords = [];
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// UI helpers
+// ═══════════════════════════════════════════════════════════════
+const UI = {
+  show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  },
+  showPerm() {
+    if (!CFG.GEMINI_KEY) document.getElementById('api-warn').style.display = 'block';
+    this.show('screen-perm');
+  },
+  setBar(id, vid, val) {
+    const f = document.getElementById(id);
+    const v = document.getElementById(vid);
+    if (!f || !v) return;
+    f.style.width      = val + '%';
+    f.style.background = val >= 80 ? '#22C55E' : val >= 55 ? '#F59E0B' : '#EF4444';
+    v.textContent      = val + '%';
+  },
+  setStatus(main, hint) {
+    document.getElementById('sf-main').textContent = main;
+    document.getElementById('sf-hint').textContent = hint;
+  },
+  setCorners(ready) { document.getElementById('corners').classList.toggle('ready', ready); },
+  setShutter(pct, armed, label) {
+    const el  = document.getElementById('shutter');
+    const arc = document.getElementById('sh-arc');
+    const cnt = document.getElementById('sh-cnt');
+    el.classList.toggle('armed', armed);
+    arc.style.strokeDashoffset = 125.6 * (1 - pct);
+    cnt.textContent = label ?? (armed ? '✓' : '–');
+  },
+  setCountdown(n) {
+    const ov  = document.getElementById('cd-overlay');
+    const num = document.getElementById('cd-num');
+    const arc = document.getElementById('cd-arc');
+    const txt = document.getElementById('cd-side-txt');
+    ov.classList.add('show');
+    num.textContent = n;
+    txt.textContent = State.side === 'front' ? 'Front side verified' : 'Back side verified';
+    arc.style.strokeDashoffset = 219.9 * (1 - (CFG.CD_SECS - n + 1) / CFG.CD_SECS);
+    this.setShutter(1, true, n);
+  },
+  hideCountdown() {
+    document.getElementById('cd-overlay').classList.remove('show');
+  },
+  setAIBadge(state, text) {
+    const el   = document.getElementById('ai-badge');
+    const span = document.getElementById('ai-txt');
+    el.className = `ai-badge show ${state}`;
+    span.textContent = text;
+  },
+  setKwChips(kws) {
+    const wrap = document.getElementById('kw-chips');
+    if (!kws.length) { wrap.classList.remove('show'); wrap.innerHTML = ''; return; }
+    wrap.innerHTML = kws.map((k, i) =>
+      `<div class="kw-chip" style="animation-delay:${i * 55}ms">${k}</div>`).join('');
+    wrap.classList.add('show');
+  },
+  setWrongBanner(show, title, sub) {
+    const el = document.getElementById('wrong-banner');
+    el.classList.toggle('show', show);
+    if (show) {
+      document.getElementById('wb-title').textContent = title || 'Not an ID card';
+      document.getElementById('wb-sub').textContent   = sub   || 'Please show your government-issued ID card';
+    }
+  },
+  setFlipPrompt(show) {
+    document.getElementById('flip-prompt').classList.toggle('show', show);
+  },
+  flash() {
+    const el = document.getElementById('flash');
+    el.classList.add('pop');
+    setTimeout(() => el.classList.remove('pop'), 200);
+  },
+  setPreview(id, dataUrl, label) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<img src="${dataUrl}"/><div class="prev-lbl">${label}</div>`;
+  },
+  updateLabels() {
+    const f = State.side === 'front';
+    document.getElementById('pill-txt').textContent  = 'National ID · ' + (f ? 'Front Side' : 'Back Side');
+    document.getElementById('side-lbl').textContent  = f ? 'SCANNING FRONT SIDE' : 'SCANNING BACK SIDE';
+    document.getElementById('cd-side-txt').textContent = f ? 'Front side verified' : 'Back side verified';
+  },
+  updateSteps() {
+    const f = State.side === 'front';
+    const b = State.side === 'back';
+    this._step('s1', f ? 'active' : 'done', f ? 'active' : 'done');
+    this._step('s2', b ? 'active' : (f ? 'idle' : 'done'), b ? 'active' : (f ? '' : 'done'));
+    document.getElementById('line1').classList.toggle('done', !f);
+  },
+  _step(id, cs, ls) {
+    const c = document.getElementById(id + 'c');
+    const l = document.getElementById(id + 'l');
+    c.className = 'sc ' + cs;
+    l.className = 'sl ' + (ls || '');
+    if (id === 's1' && cs === 'done') c.textContent = '✓';
+  },
+  async procStep(id, ms) {
+    const el = document.getElementById(id);
+    el.classList.add('active');
+    el.querySelector('.pstep-icon').innerHTML = '<div class="ps-spin"></div>';
+    await sleep(ms);
+    el.classList.remove('active');
+    el.classList.add('done');
+    el.querySelector('.pstep-icon').innerHTML =
+      '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#16A34A" stroke-width="2.5"><polyline points="2,6.5 5,10 11,3"/></svg>';
+  },
+  showError(msg) {
+    document.getElementById('err-msg').textContent = msg;
+    this.show('screen-err');
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// PIXEL ANALYSIS — runs every rAF frame, zero API cost
+// ═══════════════════════════════════════════════════════════════
+const video = document.getElementById('video');
+const cvs   = document.getElementById('cvs');
+
+function analyzeFrame() {
+  if (!video || video.readyState < 2 || !video.videoWidth) return null;
+
+  const W = 320;
+  const H = Math.round((W * video.videoHeight) / video.videoWidth) || 200;
+  cvs.width  = W;
+  cvs.height = H;
+  const ctx  = cvs.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, 0, 0, W, H);
+  const { data } = ctx.getImageData(0, 0, W, H);
+  const px = W * H;
+
+  // ── Brightness & Glare ─────────────────────────────────────
+  let lumSum = 0, over = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+    lumSum += lum;
+    if (data[i] > 238 && data[i+1] > 238 && data[i+2] > 238) over++;
+  }
+  const avgLum    = lumSum / px;
+  // Sigmoid-style mapping so mid-range indoor light reads ~70-80%
+  const brightness = clamp(Math.round(avgLum / 1.6), 0, 100);
+  const glare      = clamp(Math.round(100 - (over / px / 0.12) * 100), 0, 100);
+
+  // ── Sharpness (Laplacian variance) ─────────────────────────
+  const gray = new Float32Array(px);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++)
+    gray[p] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+
+  let ls = 0, ls2 = 0, lc = 0;
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      const i = y*W + x;
+      const v = -gray[i-W-1]-gray[i-W]-gray[i-W+1]
+                -gray[i-1]+8*gray[i]-gray[i+1]
+                -gray[i+W-1]-gray[i+W]-gray[i+W+1];
+      ls += v; ls2 += v*v; lc++;
+    }
+  }
+  const lv       = ls2/lc - (ls/lc)**2;
+  // Variance >300 = sharp card text; >2500 = very sharp
+  const sharpness = clamp(Math.round((lv - 300) / 22), 0, 100);
+
+  // ── Alignment (centre brighter/darker than corners) ────────
+  const c = lum_region(gray, W, H, 0.2, 0.2, 0.8, 0.8);
+  const e = (lum_region(gray,W,H,0,0,.18,.18) + lum_region(gray,W,H,.82,0,1,.18) +
+             lum_region(gray,W,H,0,.82,.18,1) + lum_region(gray,W,H,.82,.82,1,1)) / 4;
+  const alignment = clamp(Math.round(Math.abs(c - e) * 2.2 + 28), 0, 100);
+
+  return { sharpness, glare, alignment, brightness };
+}
+
+function lum_region(gray, W, H, x0, y0, x1, y1) {
+  let s = 0, c = 0;
+  for (let y = Math.floor(y0*H); y < Math.floor(y1*H); y++)
+    for (let x = Math.floor(x0*W); x < Math.floor(x1*W); x++)
+      { s += gray[y*W+x]; c++; }
+  return c ? s/c : 0;
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function pixelGatePassed(m) {
+  return m.sharpness >= CFG.SHARP_MIN &&
+         m.glare     >= CFG.GLARE_MIN &&
+         m.brightness >= CFG.BRIGHT_MIN;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI LIVE RECOGNITION — Gemini checks every AI_INTERVAL ms
+// ═══════════════════════════════════════════════════════════════
+const LIVE_PROMPT = `
+You are a real-time identity document detector inside a KYC scanner.
+
+Study this camera frame carefully. Respond ONLY with valid JSON — no markdown, no explanation.
+
+Rules:
+- A government-issued ID card (national ID, passport, driver's licence, voter card, NYSC card, resident permit, etc.) counts as isDocument: true.
+- Even if the card is slightly cropped or at a mild angle, still confirm it if the key fields are readable.
+- If the frame is too dark or blurry to determine: set isDocument: false, unsure: true.
+- If you see something that is clearly NOT an ID (hand only, blank surface, phone, book, credit/debit card, random object): set isDocument: false, unsure: false and describe it in notDocumentDescription.
+- keywords: list up to 7 text fragments actually visible on the card face, e.g. "IDENTITY CARD", "SEX", "DATE OF BIRTH", "SURNAME", "NATIONALITY", "CORPS MEMBER", "EXPIRY", "REPUBLIC OF", "PASSPORT NO", etc. Empty array if no ID.
+- side: "front" if photo + name visible, "back" if barcode/QR/signature strip visible, null if unclear.
+
+{
+  "isDocument": boolean,
+  "unsure": boolean,
+  "documentType": "national_id"|"passport"|"drivers_licence"|"voter_card"|"nysc"|"residence_permit"|"other_id"|null,
+  "side": "front"|"back"|null,
+  "keywords": [],
+  "notDocumentDescription": null
+}`;
+
+let aiBusy = false;
+
+async function runAICheck() {
+  if (aiBusy || State.captureFlag || !CFG.GEMINI_KEY) return;
+  if (!video || video.readyState < 2 || !video.videoWidth) return;
+
+  aiBusy = true;
+
+  // Grab a 480px frame — enough for Gemini to read text
+  const W = 480;
+  const H = Math.round((W * video.videoHeight) / video.videoWidth) || 270;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  c.getContext('2d').drawImage(video, 0, 0, W, H);
+  const b64 = c.toDataURL('image/jpeg', 0.78).split(',')[1];
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${CFG.GEMINI_MODEL}:generateContent?key=${CFG.GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [
+            { text: LIVE_PROMPT },
+            { inline_data: { mime_type: 'image/jpeg', data: b64 } },
+          ]}],
+          generationConfig: { temperature: 0.05, maxOutputTokens: 200 },
+        }),
+      }
+    );
+
+    if (!res.ok) { aiBusy = false; return; }
+
+    const data  = await res.json();
+    const raw   = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(clean); }
+    catch { aiBusy = false; return; }
+
+    applyAIResult(parsed);
+
+  } catch (_) {
+    // Network hiccup — don't change state, try again next interval
+  } finally {
+    aiBusy = false;
+  }
+}
+
+function applyAIResult(r) {
+  if (r.unsure) {
+    // Can't tell yet — keep whatever state we had, just update badge
+    State.aiState = 'unsure';
+    UI.setAIBadge('searching', 'Adjust lighting — trying to read card…');
+    return;
+  }
+
+  if (r.isDocument) {
+    // ── Check side consistency ────────────────────────────────
+    // If scanning front but AI sees back, gently tell user to flip back
+    if (r.side === 'back' && State.side === 'front') {
+      State.aiState = 'rejected';
+      UI.setAIBadge('rejected', 'This looks like the back — show the front first');
+      UI.setWrongBanner(true, 'Wrong side', 'Please flip the card and show the front side first');
+      UI.setKwChips([]);
+      if (State.cdTimer) clearCountdown();
+      return;
+    }
+    if (r.side === 'front' && State.side === 'back') {
+      State.aiState = 'rejected';
+      UI.setAIBadge('rejected', 'This looks like the front — please flip the card');
+      UI.setWrongBanner(true, 'Wrong side', 'The front was already captured. Please show the back side now.');
+      UI.setKwChips([]);
+      if (State.cdTimer) clearCountdown();
+      return;
+    }
+
+    // ── ID confirmed ─────────────────────────────────────────
+    const wasConfirmed = State.aiState === 'confirmed';
+    State.aiState    = 'confirmed';
+    State.aiLabel    = { national_id:'National ID', passport:'Passport', drivers_licence:"Driver's Licence",
+      voter_card:'Voter Card', nysc:'NYSC Card', residence_permit:'Residence Permit',
+      other_id:'ID Card' }[r.documentType] || 'ID Card';
+    State.aiKeywords = r.keywords || [];
+
+    UI.setAIBadge('confirmed', `${State.aiLabel} detected ✓`);
+    UI.setWrongBanner(false);
+    UI.setKwChips(State.aiKeywords);
+
+    if (!wasConfirmed && State.soundOn) speak('Identity card detected. Hold steady.');
+
+  } else {
+    // ── Not an ID ─────────────────────────────────────────────
+    State.aiState    = 'rejected';
+    State.aiKeywords = [];
+
+    const what = r.notDocumentDescription || 'something else';
+    const msgs = {
+      'hand'       : ['We can see your hand', 'Place the ID card flat inside the frame'],
+      'phone'      : ['This looks like a phone screen', 'Please show the physical ID card, not a screen'],
+      'credit card': ['This looks like a payment card', 'Please show your government-issued photo ID'],
+      'debit card' : ['This looks like a payment card', 'Please show your government-issued photo ID'],
+      'book'       : ['This looks like a book', 'We need your photo ID card, not a document'],
+      'wall'       : ['Nothing visible yet', 'Point the camera directly at your ID card'],
+      'table'      : ['We see a surface', 'Hold your ID card up to the camera'],
+    };
+    const hit = Object.keys(msgs).find(k => what.toLowerCase().includes(k));
+    const [title, sub] = hit ? msgs[hit] : ['Not an ID card', `We see "${what}" — please show your government-issued ID`];
+
+    UI.setAIBadge('rejected', 'No ID card detected');
+    UI.setWrongBanner(true, title, sub);
+    UI.setKwChips([]);
+
+    // Abort any countdown that was running
+    if (State.cdTimer) clearCountdown();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN ANALYSIS LOOP (rAF — pixel gate + shutter logic)
+// ═══════════════════════════════════════════════════════════════
+function startLoop() {
+  State.captureFlag = false;
+  State.steadySince = null;
+  clearCountdown();
+
+  function loop() {
+    if (State.captureFlag) { State.raf = requestAnimationFrame(loop); return; }
+
+    const m = analyzeFrame();
+    if (!m) { State.raf = requestAnimationFrame(loop); return; }
+
+    // Update metric bars
+    UI.setBar('m-sharp', 'v-sharp', m.sharpness);
+    UI.setBar('m-glare', 'v-glare', m.glare);
+    UI.setBar('m-align', 'v-align', m.alignment);
+    UI.setBar('m-bright', 'v-bright', m.brightness);
+
+    const pixOk = pixelGatePassed(m);
+    const aiOk  = State.aiState === 'confirmed';
+
+    if (pixOk && aiOk) {
+      // ── BOTH gates pass: arm shutter ─────────────────────
+      UI.setCorners(true);
+
+      if (!State.steadySince) State.steadySince = Date.now();
+      const held = Date.now() - State.steadySince;
+      const pct  = Math.min(held / CFG.STEADY_MS, 1);
+      UI.setShutter(pct, true);
+      UI.setStatus('Hold steady…', 'Almost there — keep still');
+
+      if (held >= CFG.STEADY_MS && !State.cdTimer) startCountdown();
+
+    } else {
+      // ── Gate failed — reset steady hold but NOT countdown ──
+      // (countdown resets itself on each tick if gate drops)
+      if (!State.cdTimer) {
+        State.steadySince = null;
+        UI.setShutter(0, false);
+      }
+      UI.setCorners(false);
+      UI.setStatus(...statusHint(m, pixOk, aiOk));
+    }
+
+    State.raf = requestAnimationFrame(loop);
+  }
+
+  State.raf = requestAnimationFrame(loop);
+}
+
+function statusHint(m, pixOk, aiOk) {
+  if (!CFG.GEMINI_KEY) return ['API key missing', 'Add your Gemini key to enable the scanner'];
+  if (!aiOk && State.aiState === 'idle')     return ['AI scanning…', 'Checking if this is an ID card'];
+  if (!aiOk && State.aiState === 'rejected') return ['Show your ID card', 'Place the card inside the frame'];
+  if (!aiOk && State.aiState === 'unsure')   return ['Adjust lighting', 'Move to better light so the AI can read the card'];
+  // AI is confirmed but pixel gate failed
+  if (m.sharpness < CFG.SHARP_MIN)  return m.sharpness < 45
+    ? ['Move closer and hold still', 'Image is blurry — keep your hand steady']
+    : ['Almost sharp — hold still', 'Just a second longer…'];
+  if (m.glare < CFG.GLARE_MIN)      return ['Glare detected', 'Tilt the card slightly away from the light'];
+  if (m.brightness < CFG.BRIGHT_MIN) return ['Too dark', 'Move to a brighter spot'];
+  return ['Card detected', 'Hold steady — capturing soon'];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COUNTDOWN
+// ═══════════════════════════════════════════════════════════════
+function startCountdown() {
+  let tick = CFG.CD_SECS;
+  UI.setCountdown(tick);
+
+  State.cdTimer = setInterval(() => {
+    const m = analyzeFrame();
+    // Abort if pixel gate drops OR AI no longer confirmed
+    if (!m || !pixelGatePassed(m) || State.aiState !== 'confirmed') {
+      clearCountdown();
+      UI.setStatus('Card moved — hold steady', 'Keep the card flat and still inside the frame');
+      return;
+    }
+    tick--;
+    if (tick > 0) {
+      UI.setCountdown(tick);
+    } else {
+      clearCountdown();
+      doCapture();
+    }
+  }, 1000);
+}
+
+function clearCountdown() {
+  if (State.cdTimer) { clearInterval(State.cdTimer); State.cdTimer = null; }
+  UI.hideCountdown();
+  UI.setShutter(0, false);
+  State.steadySince = null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAPTURE
+// ═══════════════════════════════════════════════════════════════
+function doCapture() {
+  if (State.captureFlag) return;
+  State.captureFlag = true;
+  cancelAnimationFrame(State.raf);
+
+  UI.flash();
+
+  // Full-res frame grab
+  const cap = document.createElement('canvas');
+  cap.width  = video.videoWidth;
+  cap.height = video.videoHeight;
+  cap.getContext('2d').drawImage(video, 0, 0);
+  const hqB64   = cap.toDataURL('image/jpeg', 0.93).split(',')[1];
+  const thumbUrl = cap.toDataURL('image/jpeg', 0.7);
+
+  if (State.side === 'front') {
+    State.frontB64 = hqB64;
+    UI.setPreview('prev-front', thumbUrl, 'FRONT');
+    UI.setPreview('succ-front', thumbUrl, 'FRONT');
+    if (State.soundOn) speak('Front captured. Please flip your card and scan the back.');
+    switchToBack();
+  } else {
+    State.backB64 = hqB64;
+    UI.setPreview('prev-back', thumbUrl, 'BACK');
+    UI.setPreview('succ-back', thumbUrl, 'BACK');
+    if (State.soundOn) speak('Back captured. Verifying now.');
+    stopStream();
+    runVerification();
+  }
+}
+
+function switchToBack() {
+  State.side = 'back';
+  stopAILoop();
+  State.resetAI();
+  UI.setKwChips([]);
+  UI.setWrongBanner(false);
+  UI.setFlipPrompt(true);
+  UI.updateLabels();
+  UI.updateSteps();
+
+  setTimeout(() => {
+    UI.setFlipPrompt(false);
+    State.captureFlag = false;
+    UI.setAIBadge('searching', 'AI scanning for back side…');
+    startAILoop();
+    startLoop();
+  }, 3200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════════════════════════════
+const Scanner = {
+  async open() {
+    UI.show('screen-scan');
+    UI.updateSteps();
+    UI.updateLabels();
+    UI.setAIBadge('searching', 'AI scanning for ID card…');
+    UI.setWrongBanner(false);
+    UI.setKwChips([]);
+
+    if (State.stream) stopStream();
+
+    try {
+      State.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+    } catch (_) {
+      try {
+        State.stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+      } catch (e2) {
+        UI.showError('Camera access denied or unavailable. Please allow camera access and try again.');
+        return;
+      }
+    }
+
+    video.srcObject = State.stream;
+    await video.play();
+    document.getElementById('laser').classList.add('show');
+
+    if (!CFG.GEMINI_KEY) {
+      UI.setAIBadge('rejected', 'API key missing — scanner disabled');
+      UI.setStatus('Scanner not configured', 'Add your Gemini API key to activate');
+      return;
+    }
+
+    startAILoop();
+    startLoop();
+  },
+
+  toggleSound() {
+    State.soundOn = !State.soundOn;
+    document.getElementById('snd-icon').style.opacity = State.soundOn ? '1' : '0.35';
+  },
+
+  retake() {
+    if (State.backB64) {
+      // Retake back side only
+      State.backB64 = null;
+      State.side    = 'back';
+    } else {
+      State.reset();
+    }
+    this.open();
+  },
+
+  reset() {
+    stopStream();
+    State.reset();
+    UI.show('screen-idle');
+  },
+};
+
+function startAILoop() {
+  stopAILoop();
+  // Fire immediately, then repeat
+  runAICheck();
+  State.aiTimer = setInterval(() => {
+    if (!State.captureFlag) runAICheck();
+  }, CFG.AI_INTERVAL);
+}
+
+function stopAILoop() {
+  if (State.aiTimer) { clearInterval(State.aiTimer); State.aiTimer = null; }
+  aiBusy = false;
+}
+
+function stopStream() {
+  cancelAnimationFrame(State.raf);
+  stopAILoop();
+  clearCountdown();
+  if (State.stream) {
+    State.stream.getTracks().forEach(t => t.stop());
+    State.stream = null;
+  }
+  document.getElementById('laser').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FINAL GEMINI VERIFICATION (after both sides captured)
+// ═══════════════════════════════════════════════════════════════
+const VERIFY_PROMPT = `
+You are a senior identity document verification engine for a regulated financial institution.
+
+Two images are attached: FRONT then BACK of a government-issued ID card.
+Both images passed hardware quality screening already. Focus on document content only.
+
+Extract all readable fields with precision. ISO 8601 dates (YYYY-MM-DD). Return null for unreadable fields — never guess.
+readabilityPass = true if fullName AND idNumber are both readable.
+Reject ONLY if: no document present, OR both name and ID number are completely unreadable, OR obvious photocopy-of-photocopy.
+
+Respond ONLY with valid JSON, no markdown:
+{
+  "documentDetected": boolean,
+  "documentType": "national_id"|"passport"|"drivers_licence"|"voter_card"|"nysc"|"residence_permit"|"other_id"|null,
+  "readabilityPass": boolean,
+  "rejectReason": null,
+  "ocr": {
+    "fullName": null, "idNumber": null, "dateOfBirth": null, "expiryDate": null,
+    "nationality": null, "gender": null, "address": null,
+    "issuingCountry": null, "issuingAuthority": null, "mrz": null
+  },
+  "confidence": { "documentDetection": 0, "ocrAccuracy": 0, "overall": 0 },
+  "flags": { "nameMismatchFrontBack": false, "possiblePhotocopy": false }
+}`;
+
+async function runVerification() {
+  UI.show('screen-proc');
+  await UI.procStep('ps1', 700);
+  await UI.procStep('ps2', 900);
+
+  let result;
+  if (!CFG.GEMINI_KEY) {
+    result = { success: true, data: {
+      documentDetected: true, readabilityPass: true,
+      ocr: { fullName: 'Demo Mode — add API key', idNumber: 'No key configured',
+             dateOfBirth: null, expiryDate: null, nationality: null,
+             gender: null, address: null, issuingCountry: null, issuingAuthority: null },
+      flags: { nameMismatchFrontBack: false, possiblePhotocopy: false },
+    }};
+  } else {
+    result = await callVerifyGemini();
+  }
+
+  await UI.procStep('ps3', 500);
+
+  if (!result.success) { UI.showError(result.message); return; }
+  showSuccess(result.data);
+}
+
+async function callVerifyGemini() {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${CFG.GEMINI_MODEL}:generateContent?key=${CFG.GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [
+            { text: VERIFY_PROMPT },
+            { inline_data: { mime_type: 'image/jpeg', data: State.frontB64 } },
+            { text: 'Above: FRONT side.' },
+            { inline_data: { mime_type: 'image/jpeg', data: State.backB64 } },
+            { text: 'Above: BACK side. Extract and verify both.' },
+          ]}],
+          generationConfig: {
+            temperature: 0.05,
+            maxOutputTokens: 1200,
+            thinkingConfig: { thinkingBudget: 1024 },
+          },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      return { success: false, message: `Verification error (${res.status}): ${e?.error?.message || res.statusText}` };
+    }
+
+    const data  = await res.json();
+    const raw   = data?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || '';
+    const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(clean); }
+    catch { return { success: false, message: 'Verification response was unreadable. Please retake the photos.' }; }
+
+    if (!parsed.documentDetected || !parsed.readabilityPass)
+      return { success: false, message: parsed.rejectReason || 'Document could not be verified. Please retake the photos.' };
+
+    return { success: true, data: parsed };
+
+  } catch (_) {
+    return { success: false, message: 'Connection failed. Check your internet and try again.' };
+  }
+}
+
+function showSuccess(data) {
+  document.getElementById('s3c').className = 'sc done';
+  document.getElementById('s3l').className = 'sl done';
+  document.getElementById('line2').classList.add('done');
+
+  const ocr = data?.ocr;
+  if (ocr) {
+    const rows = [
+      ['Full Name', ocr.fullName], ['ID Number', ocr.idNumber],
+      ['Date of Birth', ocr.dateOfBirth], ['Expiry Date', ocr.expiryDate],
+      ['Gender', ocr.gender], ['Nationality', ocr.nationality],
+      ['Issuing Country', ocr.issuingCountry], ['Issuing Authority', ocr.issuingAuthority],
+      ['Address', ocr.address],
+    ].filter(([,v]) => v);
+
+    if (rows.length) {
+      document.getElementById('ocr-grid').innerHTML = rows.map(([l,v]) => {
+        const span = l === 'Address' ? ' style="grid-column:1/-1"' : '';
+        return `<div class="ocr-f"${span}><div class="ocr-fl">${l}</div><div class="ocr-fv">${v}</div></div>`;
+      }).join('');
+      document.getElementById('ocr-card').style.display = 'block';
+    }
+  }
+
+  const flags = data?.flags;
+  if (flags?.nameMismatchFrontBack || flags?.possiblePhotocopy) {
+    const w = document.createElement('div');
+    w.style.cssText = 'width:100%;padding:10px 13px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:9px;font-size:12px;color:#92400E;line-height:1.5;';
+    w.innerHTML = [
+      flags.nameMismatchFrontBack && '⚠️ Name on front and back may differ — admin will review.',
+      flags.possiblePhotocopy     && '⚠️ Document may be a copy — admin will review.',
+    ].filter(Boolean).join('<br>');
+    document.querySelector('.succ-card').appendChild(w);
+  }
+
+  UI.show('screen-succ');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SOUND
+// ═══════════════════════════════════════════════════════════════
+function speak(text) {
+  if (!State.soundOn || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95; u.pitch = 1;
+  window.speechSynthesis.speak(u);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Init ────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (!CFG.GEMINI_KEY) document.getElementById('api-warn').style.display = 'block';
+});
+</script>
+</body>
+</html>
