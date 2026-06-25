@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>ID Verification Scanner</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #F7F8FA;
+    --surface:   #FFFFFF;
+    --card:      #1A1D23;
+    --accent:    #2563EB;
+    --accent-g:  #16A34A;
+    --accent-r:  #DC2626;
+    --accent-y:  #D97706;
+    --text-1:    #0F172A;
+    --text-2:    #475569;
+    --text-3:    #94A3B8;
+    --border:    #E2E8F0;
+    --radius:    16px;
+    --font:      -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-1);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* ── App Shell ── */
+  #app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 0 40px;
+  }
+
+  /* ── Header ── */
+  .header {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-logo {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-logo svg { width: 18px; height: 18px; fill: #fff; }
+  .header-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+
+  /* ── Steps ── */
+  .steps {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .step-item {
+    display: flex; align-items: center; gap: 8px; flex: 1;
+  }
+  .step-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+  .step-circle.done   { background: var(--accent-g); color: #fff; }
+  .step-circle.active { background: var(--accent);   color: #fff; }
+  .step-circle.idle   { background: var(--border);   color: var(--text-3); }
+  .step-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+  .step-label.active { color: var(--accent); }
+  .step-label.done   { color: var(--accent-g); }
+  .step-line {
+    flex: 1; height: 1px; background: var(--border);
+    margin: 0 8px; min-width: 16px;
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--accent-g); }
+
+  /* ── Screens ── */
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 24px 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: fadeUp 0.35s ease;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Idle Screen ── */
+  .idle-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 20px;
+    text-align: center;
+  }
+  .idle-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .idle-icon svg { width: 36px; height: 36px; }
+  .idle-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .idle-sub { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 280px; }
+
+  .checklist {
+    width: 100%; display: flex; flex-direction: column; gap: 10px;
+    text-align: left;
+  }
+  .checklist-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13px; color: var(--text-2); line-height: 1.4;
+  }
+  .checklist-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #EFF6FF; border: 1.5px solid #BFDBFE;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .checklist-dot svg { width: 10px; height: 10px; stroke: var(--accent); fill: none; stroke-width: 2.5; }
+
+  .btn-primary {
+    width: 100%; padding: 15px;
+    background: var(--accent);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; letter-spacing: -0.2px;
+    cursor: pointer; transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary:active { transform: scale(0.98); background: #1D4ED8; }
+
+  .btn-ghost {
+    width: 100%; padding: 14px;
+    background: transparent;
+    color: var(--text-2); border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-ghost:active { background: var(--bg); }
+
+  /* ── Permission Screen ── */
+  .perm-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .perm-row {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .perm-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: #FFF7ED; border: 1px solid #FED7AA;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .perm-icon svg { width: 24px; height: 24px; }
+  .perm-text-title { font-size: 15px; font-weight: 600; }
+  .perm-text-sub { font-size: 13px; color: var(--text-2); margin-top: 2px; line-height: 1.4; }
+  .perm-divider { height: 1px; background: var(--border); }
+
+  /* ── Scanner Screen ── */
+  .scanner-wrap {
+    width: 100%;
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .scanner-header {
+    padding: 14px 16px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .scanner-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 6px 12px;
+  }
+  .scanner-pill-flag { font-size: 16px; }
+  .scanner-pill-text { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.9); }
+
+  .sound-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: none; color: rgba(255,255,255,0.7);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s;
+  }
+  .sound-btn:active { background: rgba(255,255,255,0.15); }
+  .sound-btn svg { width: 16px; height: 16px; }
+
+  .scanner-side-label {
+    text-align: center;
+    font-size: 11px; font-weight: 600; letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+  }
+
+  /* Video viewport */
+  .viewport-wrap {
+    position: relative;
+    width: calc(100% - 24px);
+    margin: 0 12px;
+    aspect-ratio: 1.586 / 1; /* ISO ID-1 card ratio */
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+  }
+
+  #video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Corner guides */
+  .corners {
+    position: absolute; inset: 0; pointer-events: none;
+    z-index: 2;
+  }
+  .corner {
+    position: absolute; width: 22px; height: 22px;
+    border-color: rgba(255,255,255,0.4);
+    border-style: solid;
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+  .corner.tl { top: 10px; left: 10px; border-width: 2.5px 0 0 2.5px; border-radius: 4px 0 0 0; }
+  .corner.tr { top: 10px; right: 10px; border-width: 2.5px 2.5px 0 0; border-radius: 0 4px 0 0; }
+  .corner.bl { bottom: 10px; left: 10px; border-width: 0 0 2.5px 2.5px; border-radius: 0 0 0 4px; }
+  .corner.br { bottom: 10px; right: 10px; border-width: 0 2.5px 2.5px 0; border-radius: 0 0 4px 0; }
+
+  .corners.ready .corner {
+    border-color: #22C55E;
+    box-shadow: 0 0 8px rgba(34,197,94,0.6);
+    animation: cornerPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes cornerPulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.6; }
+  }
+
+  /* Scan laser */
+  .scan-laser {
+    position: absolute; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #2563EB 30%, #60A5FA 50%, #2563EB 70%, transparent 100%);
+    box-shadow: 0 0 8px rgba(37,99,235,0.8);
+    z-index: 3; opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    animation: laserSweep 2s ease-in-out infinite;
+  }
+  .scan-laser.visible { opacity: 1; }
+  @keyframes laserSweep {
+    0%   { top: 8%; }
+    50%  { top: 88%; }
+    100% { top: 8%; }
+  }
+
+  /* Countdown overlay */
+  .countdown-overlay {
+    position: absolute; inset: 0; z-index: 10;
+    background: rgba(0,0,0,0.55);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .countdown-overlay.visible { opacity: 1; pointer-events: all; }
+
+  .countdown-checklist {
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: flex-start;
+  }
+  .cd-check {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 500; color: #fff;
+  }
+  .cd-check svg { width: 16px; height: 16px; stroke: #22C55E; fill: none; stroke-width: 2.5; flex-shrink: 0; }
+
+  .countdown-circle {
+    width: 80px; height: 80px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 4px;
+  }
+  .countdown-circle svg {
+    position: absolute; inset: 0;
+    transform: rotate(-90deg);
+  }
+  .cd-track { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 4; }
+  .cd-progress {
+    fill: none; stroke: #22C55E; stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+    transition: stroke-dashoffset 1s linear;
+  }
+  .cd-number {
+    font-size: 30px; font-weight: 700; color: #fff;
+    letter-spacing: -1px;
+    position: relative; z-index: 1;
+  }
+  .cd-label {
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7);
+    letter-spacing: 0.5px; text-align: center;
+  }
+
+  /* Capture flash */
+  .capture-flash {
+    position: absolute; inset: 0; z-index: 20;
+    background: #fff; opacity: 0; pointer-events: none;
+    transition: opacity 0.08s;
+  }
+  .capture-flash.flash { opacity: 0.9; }
+
+  /* ── Metrics HUD ── */
+  .metrics-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; width: calc(100% - 24px); margin: 10px 12px 0;
+  }
+  .metric-item {
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .metric-label {
+    font-size: 10px; font-weight: 500;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .metric-row { display: flex; align-items: center; gap: 6px; }
+  .metric-bar {
+    flex: 1; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.1); overflow: hidden;
+  }
+  .metric-fill {
+    height: 100%; border-radius: 2px;
+    transition: width 0.2s ease, background 0.3s;
+  }
+  .metric-val {
+    font-size: 11px; font-weight: 600;
+    color: rgba(255,255,255,0.8);
+    min-width: 28px; text-align: right;
+  }
+
+  /* ── Status text + shutter circle ── */
+  .scanner-footer {
+    padding: 14px 16px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .status-block { flex: 1; }
+  .status-main {
+    font-size: 13px; font-weight: 600; color: #fff;
+    transition: color 0.3s;
+  }
+  .status-hint {
+    font-size: 11px; color: rgba(255,255,255,0.45);
+    margin-top: 3px; line-height: 1.4;
+  }
+
+  .shutter-ring {
+    width: 52px; height: 52px; flex-shrink: 0;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    transition: border-color 0.4s;
+  }
+  .shutter-ring.armed { border-color: #22C55E; box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+  .shutter-ring svg {
+    width: 20px; height: 20px;
+    position: absolute;
+    transform: rotate(-90deg);
+  }
+  .shutter-track { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 3; }
+  .shutter-arc {
+    fill: none; stroke: #22C55E; stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 125.6;
+    stroke-dashoffset: 125.6;
+    transition: stroke-dashoffset 0.25s ease;
+  }
+  .shutter-count {
+    font-size: 16px; font-weight: 700; color: #fff;
+    position: relative; z-index: 1;
+  }
+
+  /* ── Flip prompt ── */
+  .flip-prompt {
+    width: calc(100% - 24px); margin: 0 12px;
+    background: rgba(34,197,94,0.12);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 10px; padding: 12px 14px;
+    display: none; align-items: center; gap: 10px;
+  }
+  .flip-prompt.visible { display: flex; }
+  .flip-prompt-icon { font-size: 22px; }
+  .flip-prompt-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); line-height: 1.4; }
+
+  /* ── Processing screen ── */
+  .process-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 20px;
+    text-align: center;
+  }
+  .spinner {
+    width: 56px; height: 56px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .process-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .process-sub { font-size: 14px; color: var(--text-2); line-height: 1.5; max-width: 260px; }
+
+  .process-steps { width: 100%; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+  .pstep {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text-2);
+    padding: 10px 14px; border-radius: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .pstep.done { color: var(--accent-g); border-color: #BBF7D0; background: #F0FDF4; }
+  .pstep.active { color: var(--accent); border-color: #BFDBFE; background: #EFF6FF; }
+  .pstep-icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .pstep-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid #BFDBFE; border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+
+  /* ── Error screen ── */
+  .error-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid #FCA5A5;
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    text-align: center;
+  }
+  .error-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: #FEF2F2;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .error-title { font-size: 18px; font-weight: 700; color: var(--accent-r); }
+  .error-msg { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 280px; }
+
+  /* ── Success screen ── */
+  .success-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid #86EFAC;
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    text-align: center;
+  }
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, #22C55E, #16A34A);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(34,197,94,0.35);
+    animation: successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes successPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+  .success-icon svg { width: 36px; height: 36px; stroke: #fff; fill: none; stroke-width: 2.5; }
+  .success-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .success-sub { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 280px; }
+
+  .ocr-card {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ocr-header {
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 600;
+    color: var(--text-2); letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .ocr-grid { display: grid; grid-template-columns: 1fr 1fr; }
+  .ocr-field {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .ocr-field:nth-child(even) { border-right: none; }
+  .ocr-field-label { font-size: 10px; color: var(--text-3); font-weight: 500; margin-bottom: 2px; }
+  .ocr-field-value { font-size: 13px; font-weight: 600; color: var(--text-1); }
+
+  /* ── API key notice ── */
+  .api-notice {
+    width: 100%; padding: 12px 14px;
+    background: #FFFBEB; border: 1px solid #FDE68A;
+    border-radius: 10px;
+    font-size: 12px; color: #92400E; line-height: 1.5;
+  }
+  .api-notice strong { display: block; margin-bottom: 2px; }
+
+  /* ── Previews strip ── */
+  .previews {
+    display: flex; gap: 10px; width: 100%;
+  }
+  .preview-thumb {
+    flex: 1; aspect-ratio: 1.586; border-radius: 8px;
+    background: var(--bg); border: 1.5px solid var(--border);
+    overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .preview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-thumb .preview-label {
+    position: absolute; bottom: 4px; left: 4px;
+    background: rgba(0,0,0,0.6); color: #fff;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
+    padding: 2px 6px; border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .preview-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--text-3);
+  }
+  .preview-placeholder svg { width: 20px; height: 20px; stroke: currentColor; fill: none; }
+  .preview-placeholder span { font-size: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 20 20"><path d="M10 2L2 7v6l8 5 8-5V7L10 2z"/></svg>
+    </div>
+    <span class="header-title">Identity Verification</span>
+  </div>
+
+  <!-- Step tracker -->
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-circle active" id="s1c">1</div>
+      <span class="step-label active" id="s1l">Front</span>
+    </div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-item">
+      <div class="step-circle idle" id="s2c">2</div>
+      <span class="step-label" id="s2l">Back</span>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-item">
+      <div class="step-circle idle" id="s3c">✓</div>
+      <span class="step-label" id="s3l">Verify</span>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Idle ── -->
+  <div class="screen active" id="screen-idle">
+    <div class="idle-card">
+      <div class="idle-icon">
+        <svg viewBox="0 0 36 36" fill="none" stroke="#2563EB" stroke-width="1.8">
+          <rect x="4" y="8" width="28" height="20" rx="3"/>
+          <circle cx="13" cy="16" r="3"/>
+          <path d="M20 13h7M20 18h7M8 25h20"/>
+        </svg>
+      </div>
+      <div>
+        <div class="idle-title">Scan your ID card</div>
+        <div class="idle-sub" style="margin-top:6px">We'll automatically capture both sides. The whole process takes about 30 seconds.</div>
+      </div>
+      <div class="checklist">
+        <div class="checklist-item">
+          <div class="checklist-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>
+          Good lighting — avoid shadows across the card
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>
+          Place the card flat — not at an angle
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>
+          All four corners must be visible inside the frame
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-dot"><svg viewBox="0 0 10 10"><polyline points="2,5 4,7.5 8,2.5"/></svg></div>
+          Remove any plastic sleeve or cover
+        </div>
+      </div>
+      <button class="btn-primary" onclick="showPermission()">Start scanning →</button>
+    </div>
+    <div id="api-notice" class="api-notice" style="display:none">
+      <strong>⚠️ Gemini API key not set</strong>
+      Open this file, find <code>GEMINI_API_KEY = ''</code> near the top of the script, and paste your key. AI verification will be skipped until then.
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Permission ── -->
+  <div class="screen" id="screen-perm">
+    <div class="perm-card">
+      <div class="perm-row">
+        <div class="perm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="1.8">
+            <path d="M12 2a8 8 0 0 0-8 8v1a3 3 0 0 0 0 6h1m14 0h1a3 3 0 0 0 0-6v-1a8 8 0 0 0-8-8z"/>
+            <circle cx="12" cy="13" r="2.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="perm-text-title">Camera access required</div>
+          <div class="perm-text-sub">This scanner needs your rear camera to photograph your ID card. No video is recorded or stored.</div>
+        </div>
+      </div>
+      <div class="perm-divider"></div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.6;">
+        When the browser asks for permission, tap <strong>Allow</strong>. If you see <em>"Don't allow"</em>, choose Allow this time instead.
+      </div>
+      <button class="btn-primary" onclick="openCamera()">Open camera</button>
+      <button class="btn-ghost" onclick="showScreen('screen-idle')">Go back</button>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Scanner ── -->
+  <div class="screen" id="screen-scan">
+
+    <!-- Image preview strip -->
+    <div class="previews" id="preview-strip">
+      <div class="preview-thumb" id="prev-front">
+        <div class="preview-placeholder">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="1.5"/></svg>
+          <span>Front</span>
+        </div>
+      </div>
+      <div class="preview-thumb" id="prev-back">
+        <div class="preview-placeholder">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="13" x2="13" y2="13"/></svg>
+          <span>Back</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scanner-wrap">
+      <!-- Top bar -->
+      <div class="scanner-header">
+        <div class="scanner-pill">
+          <span class="scanner-pill-flag">🪪</span>
+          <span class="scanner-pill-text" id="scan-pill-text">National ID · Front Side</span>
+        </div>
+        <button class="sound-btn" id="sound-btn" onclick="toggleSound()">
+          <svg id="sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="scanner-side-label" id="scan-side-label">SCANNING FRONT SIDE</div>
+
+      <!-- Camera viewport -->
+      <div class="viewport-wrap">
+        <video id="video" autoplay playsinline muted></video>
+
+        <!-- Corner guides -->
+        <div class="corners" id="corners">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+        </div>
+
+        <!-- Scan laser -->
+        <div class="scan-laser" id="scan-laser"></div>
+
+        <!-- Countdown overlay -->
+        <div class="countdown-overlay" id="countdown-overlay">
+          <div class="countdown-checklist" id="cd-checklist">
+            <div class="cd-check">
+              <svg viewBox="0 0 16 16"><polyline points="3,8 6,11 13,4"/></svg>
+              Document detected
+            </div>
+            <div class="cd-check" id="cd-side-check">
+              <svg viewBox="0 0 16 16"><polyline points="3,8 6,11 13,4"/></svg>
+              <span id="cd-side-text">Front side verified</span>
+            </div>
+            <div class="cd-check">
+              <svg viewBox="0 0 16 16"><polyline points="3,8 6,11 13,4"/></svg>
+              Image sharp &amp; readable
+            </div>
+          </div>
+          <div class="countdown-circle">
+            <svg viewBox="0 0 80 80" width="80" height="80">
+              <circle class="cd-track" cx="40" cy="40" r="35"/>
+              <circle class="cd-progress" id="cd-arc" cx="40" cy="40" r="35"/>
+            </svg>
+            <div class="cd-number" id="cd-number">3</div>
+          </div>
+          <div class="cd-label">Capturing in…</div>
+        </div>
+
+        <!-- Flash -->
+        <div class="capture-flash" id="capture-flash"></div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid" id="metrics-grid">
+        <div class="metric-item">
+          <div class="metric-label">Sharpness</div>
+          <div class="metric-row">
+            <div class="metric-bar"><div class="metric-fill" id="m-sharpness" style="width:0%"></div></div>
+            <div class="metric-val" id="mv-sharpness">0%</div>
+          </div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Glare</div>
+          <div class="metric-row">
+            <div class="metric-bar"><div class="metric-fill" id="m-glare" style="width:0%"></div></div>
+            <div class="metric-val" id="mv-glare">0%</div>
+          </div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Alignment</div>
+          <div class="metric-row">
+            <div class="metric-bar"><div class="metric-fill" id="m-align" style="width:0%"></div></div>
+            <div class="metric-val" id="mv-align">0%</div>
+          </div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Brightness</div>
+          <div class="metric-row">
+            <div class="metric-bar"><div class="metric-fill" id="m-bright" style="width:0%"></div></div>
+            <div class="metric-val" id="mv-bright">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flip prompt -->
+      <div class="flip-prompt" id="flip-prompt">
+        <div class="flip-prompt-icon">🔄</div>
+        <div class="flip-prompt-text">
+          <strong style="color:#22C55E">Front captured.</strong>
+          Now flip your card and scan the back side.
+        </div>
+      </div>
+
+      <!-- Footer: status + shutter ring -->
+      <div class="scanner-footer">
+        <div class="status-block">
+          <div class="status-main" id="status-main">Searching for document…</div>
+          <div class="status-hint" id="status-hint">Point your rear camera at the ID card</div>
+        </div>
+        <div class="shutter-ring" id="shutter-ring">
+          <svg viewBox="0 0 52 52" width="52" height="52">
+            <circle class="shutter-track" cx="26" cy="26" r="20"/>
+            <circle class="shutter-arc" id="shutter-arc" cx="26" cy="26" r="20"/>
+          </svg>
+          <span class="shutter-count" id="shutter-count">–</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Processing ── -->
+  <div class="screen" id="screen-process">
+    <div class="process-card">
+      <div class="spinner"></div>
+      <div class="process-title">Verifying your document</div>
+      <div class="process-sub">AI is reading your card details. This takes a few seconds.</div>
+      <div class="process-steps">
+        <div class="pstep" id="ps1">
+          <div class="pstep-icon"><div class="pstep-spinner"></div></div>
+          Uploading images securely
+        </div>
+        <div class="pstep" id="ps2">
+          <div class="pstep-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/></svg>
+          </div>
+          Reading document fields
+        </div>
+        <div class="pstep" id="ps3">
+          <div class="pstep-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/></svg>
+          </div>
+          Verifying authenticity
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Error ── -->
+  <div class="screen" id="screen-error">
+    <div class="error-card">
+      <div class="error-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="error-title">Couldn't verify</div>
+      <div class="error-msg" id="error-msg">Something went wrong. Please try again.</div>
+      <button class="btn-primary" onclick="retakeScan()" style="background:var(--accent-r)">Retake photo</button>
+      <button class="btn-ghost" onclick="showScreen('screen-idle')">Start over</button>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Success ── -->
+  <div class="screen" id="screen-success">
+    <div class="success-card">
+      <div class="success-icon">
+        <svg viewBox="0 0 36 36"><polyline points="6,18 14,26 30,10"/></svg>
+      </div>
+      <div class="success-title">Verification complete</div>
+      <div class="success-sub">Your identity has been confirmed. Withdrawal will be processed within 24 hours.</div>
+      <div class="previews" style="width:100%">
+        <div class="preview-thumb" id="succ-front">
+          <div class="preview-placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/></svg><span>Front</span></div>
+        </div>
+        <div class="preview-thumb" id="succ-back">
+          <div class="preview-placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/></svg><span>Back</span></div>
+        </div>
+      </div>
+      <div class="ocr-card" id="ocr-card" style="display:none">
+        <div class="ocr-header">Extracted information</div>
+        <div class="ocr-grid" id="ocr-grid"></div>
+      </div>
+      <button class="btn-primary" onclick="showScreen('screen-idle')" style="margin-top:4px">Done</button>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<canvas id="analysis-canvas" style="display:none"></canvas>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURATION — paste your Gemini API key here when ready
+// ═══════════════════════════════════════════════════════════════════════════
+const GEMINI_API_KEY = 'AIzaSyD0GvQJ0Ir_0qL6Ut-EC-SpdVKApIPNOpA';   // ← paste key here e.g. 'AIza...'
+const GEMINI_MODEL   = 'gemini-2.0-flash';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THRESHOLDS (tune here, nowhere else)
+// ═══════════════════════════════════════════════════════════════════════════
+const T = {
+  SHARPNESS_MIN : 85,   // primary gate
+  GLARE_MIN     : 85,   // primary gate
+  CONFIDENCE_ARM: 70,   // minimum overall to start steady-hold
+  STEADY_HOLD_MS: 1500, // hold still this long before countdown
+  COUNTDOWN     : 3,    // seconds
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let currentSide     = 'front';   // 'front' | 'back'
+let stream          = null;
+let rafId           = 0;
+let soundEnabled    = true;
+let steadySince     = null;
+let countdownTimer  = null;
+let countdownTick   = 0;
+let captureInProgress = false;
+let frontImageB64   = null;
+let backImageB64    = null;
+
+const video   = document.getElementById('video');
+const canvas  = document.getElementById('analysis-canvas');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCREEN ROUTING
+// ═══════════════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showPermission() {
+  if (!GEMINI_API_KEY) {
+    document.getElementById('api-notice').style.display = 'block';
+  }
+  showScreen('screen-perm');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════════════════════════════════════════
+async function openCamera() {
+  showScreen('screen-scan');
+  updateStepUI();
+
+  // Stop any existing stream
+  if (stream) stopStream();
+
+  const constraints = {
+    video: {
+      facingMode: { exact: 'environment' },  // rear camera only
+      width:  { ideal: 1920 },
+      height: { ideal: 1080 },
+    },
+    audio: false,
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (e) {
+    // Fallback: drop 'exact' so desktop browsers can use front camera in dev
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+    } catch (e2) {
+      showError('Camera access was denied or is not available. Please allow camera permission and try again.');
+      return;
+    }
+  }
+
+  video.srcObject = stream;
+  await video.play();
+  document.getElementById('scan-laser').classList.add('visible');
+  startAnalysisLoop();
+}
+
+function stopStream() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  cancelAnimationFrame(rafId);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PIXEL ANALYSIS (runs every animation frame — no API calls)
+// ═══════════════════════════════════════════════════════════════════════════
+function analyzeFrame() {
+  if (!video || video.readyState < 2) return zeroMetrics();
+
+  const W = 320;
+  const H = Math.round((W * video.videoHeight) / (video.videoWidth || 1)) || 200;
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, 0, 0, W, H);
+  const { data } = ctx.getImageData(0, 0, W, H);
+  const px = W * H;
+
+  // ── Brightness & Glare ──────────────────────────────────────────────────
+  let lumSum = 0, overexposed = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+    lumSum += lum;
+    if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) overexposed++;
+  }
+  const avgLum    = lumSum / px;
+  const brightness = clamp((avgLum - 60) / 140 * 100, 0, 100);
+  const glareRatio = overexposed / px;
+  const glare      = clamp(100 - (glareRatio / 0.15) * 100, 0, 100);
+
+  // ── Sharpness (Laplacian variance) ──────────────────────────────────────
+  const gray = new Float32Array(px);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    gray[p] = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+  }
+  let lapSumSq = 0, lapSum = 0, lapCount = 0;
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      const idx = y*W + x;
+      const lap =
+        -gray[idx-W-1]-gray[idx-W]-gray[idx-W+1]
+        -gray[idx-1]+8*gray[idx]-gray[idx+1]
+        -gray[idx+W-1]-gray[idx+W]-gray[idx+W+1];
+      lapSum   += lap;
+      lapSumSq += lap*lap;
+      lapCount++;
+    }
+  }
+  const lapMean     = lapSum / lapCount;
+  const lapVariance = lapSumSq / lapCount - lapMean*lapMean;
+  const sharpness   = clamp((lapVariance - 200) / 1800 * 100, 0, 100);
+
+  // ── Alignment (centre vs. edge luminance contrast) ───────────────────────
+  const cx = sampleLum(gray, W, H, 0.25, 0.25, 0.75, 0.75);
+  const edgeAvg = (
+    sampleLum(gray,W,H,0,0,0.2,0.2) +
+    sampleLum(gray,W,H,0.8,0,1,0.2) +
+    sampleLum(gray,W,H,0,0.8,0.2,1) +
+    sampleLum(gray,W,H,0.8,0.8,1,1)
+  ) / 4;
+  const alignment = clamp((Math.abs(cx - edgeAvg) / 40) * 100 + 30, 0, 100);
+
+  // ── Composite confidence ─────────────────────────────────────────────────
+  const overall = Math.round(
+    sharpness  * 0.35 +
+    glare      * 0.25 +
+    alignment  * 0.20 +
+    brightness * 0.20
+  );
+
+  return {
+    sharpness:  Math.round(sharpness),
+    glare:      Math.round(glare),
+    alignment:  Math.round(alignment),
+    brightness: Math.round(brightness),
+    overall,
+    primaryGate: sharpness >= T.SHARPNESS_MIN && glare >= T.GLARE_MIN,
+  };
+}
+
+function sampleLum(gray, W, H, x0, y0, x1, y1) {
+  let s = 0, c = 0;
+  const xs = Math.floor(x0*W), xe = Math.floor(x1*W);
+  const ys = Math.floor(y0*H), ye = Math.floor(y1*H);
+  for (let y = ys; y < ye; y++)
+    for (let x = xs; x < xe; x++) { s += gray[y*W+x]; c++; }
+  return c ? s/c : 0;
+}
+
+function zeroMetrics() {
+  return { sharpness:0, glare:0, alignment:0, brightness:0, overall:0, primaryGate:false };
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANALYSIS LOOP
+// ═══════════════════════════════════════════════════════════════════════════
+function startAnalysisLoop() {
+  captureInProgress = false;
+  steadySince       = null;
+  clearCountdown();
+
+  function loop() {
+    if (captureInProgress) { rafId = requestAnimationFrame(loop); return; }
+
+    const m = analyzeFrame();
+    updateMetricUI(m);
+
+    if (m.primaryGate && m.overall >= T.CONFIDENCE_ARM) {
+      // Arm shutter
+      if (!steadySince) steadySince = Date.now();
+      const held = Date.now() - steadySince;
+      const pct  = Math.min(held / T.STEADY_HOLD_MS, 1);
+      updateShutterRing(pct, true);
+      setStatus('Hold steady…', 'Looking good — capturing soon');
+      setCorners(true);
+
+      if (held >= T.STEADY_HOLD_MS && !countdownTimer) {
+        startCountdown();
+      }
+    } else {
+      // Reset
+      if (countdownTimer) clearCountdown();
+      else { steadySince = null; updateShutterRing(0, false); }
+
+      setCorners(false);
+      const hint = buildHint(m);
+      setStatus(hint.status, hint.hint);
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  rafId = requestAnimationFrame(loop);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COUNTDOWN
+// ═══════════════════════════════════════════════════════════════════════════
+function startCountdown() {
+  countdownTick = T.COUNTDOWN;
+  showCountdownOverlay(countdownTick);
+
+  countdownTimer = setInterval(() => {
+    // Re-check metrics each tick — if card moves, abort
+    const m = analyzeFrame();
+    if (!m.primaryGate) {
+      clearCountdown();
+      setStatus('Card moved — hold steady', 'Keep the card still inside the frame');
+      return;
+    }
+
+    countdownTick--;
+    if (countdownTick > 0) {
+      showCountdownOverlay(countdownTick);
+    } else {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      triggerCapture();
+    }
+  }, 1000);
+}
+
+function clearCountdown() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  document.getElementById('countdown-overlay').classList.remove('visible');
+  updateShutterRing(0, false);
+  steadySince = null;
+}
+
+function showCountdownOverlay(n) {
+  const overlay = document.getElementById('countdown-overlay');
+  overlay.classList.add('visible');
+  document.getElementById('cd-number').textContent = n;
+  document.getElementById('cd-side-text').textContent =
+    currentSide === 'front' ? 'Front side verified' : 'Back side verified';
+
+  // Arc progress: 3→full, 2→2/3, 1→1/3
+  const circumference = 2 * Math.PI * 35; // 219.9
+  const offset = circumference * (1 - (T.COUNTDOWN - n + 1) / T.COUNTDOWN);
+  document.getElementById('cd-arc').style.strokeDashoffset = offset;
+
+  // Shutter ring
+  updateShutterRing(1, true, n);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAPTURE
+// ═══════════════════════════════════════════════════════════════════════════
+function triggerCapture() {
+  if (captureInProgress) return;
+  captureInProgress = true;
+  cancelAnimationFrame(rafId);
+
+  // Flash effect
+  const flash = document.getElementById('capture-flash');
+  flash.classList.add('flash');
+  setTimeout(() => flash.classList.remove('flash'), 250);
+
+  // Speak
+  if (soundEnabled) {
+    const msg = currentSide === 'front'
+      ? 'Front captured. Please flip your card.'
+      : 'Back captured. Verifying now.';
+    speak(msg);
+  }
+
+  // Grab frame at full resolution
+  const captureCanvas = document.createElement('canvas');
+  captureCanvas.width  = video.videoWidth;
+  captureCanvas.height = video.videoHeight;
+  captureCanvas.getContext('2d').drawImage(video, 0, 0);
+  const b64 = captureCanvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+
+  if (currentSide === 'front') {
+    frontImageB64 = b64;
+    updatePreview('prev-front', captureCanvas.toDataURL('image/jpeg', 0.7), 'FRONT');
+    updatePreview('succ-front', captureCanvas.toDataURL('image/jpeg', 0.7), 'FRONT');
+    switchToBack();
+  } else {
+    backImageB64 = b64;
+    updatePreview('prev-back', captureCanvas.toDataURL('image/jpeg', 0.7), 'BACK');
+    updatePreview('succ-back', captureCanvas.toDataURL('image/jpeg', 0.7), 'BACK');
+    // Both sides done — verify
+    stopStream();
+    runVerification();
+  }
+}
+
+function switchToBack() {
+  currentSide = 'back';
+  clearCountdown();
+
+  // Show flip prompt for 3 seconds
+  const prompt = document.getElementById('flip-prompt');
+  prompt.classList.add('visible');
+  setTimeout(() => {
+    prompt.classList.remove('visible');
+    // Restart analysis for back side
+    captureInProgress = false;
+    updateStepUI();
+    updateScanLabels();
+    startAnalysisLoop();
+  }, 3000);
+
+  updateStepUI();
+  updateScanLabels();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GEMINI VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════════
+async function runVerification() {
+  showScreen('screen-process');
+
+  await animateProcessStep('ps1', 600);
+  await animateProcessStep('ps2', 800);
+
+  let result;
+
+  if (!GEMINI_API_KEY) {
+    // Mock result for testing without API key
+    result = {
+      success: true,
+      data: {
+        documentDetected: true,
+        side: 'back',
+        readabilityPass: true,
+        ocr: {
+          fullName: 'Demo Mode (No API Key)',
+          idNumber: 'API key not configured',
+          dateOfBirth: null, expiryDate: null,
+          nationality: null, address: null,
+        },
+        confidence: { overall: 0 },
+      }
+    };
+  } else {
+    result = await callGemini();
+  }
+
+  await animateProcessStep('ps3', 400);
+
+  if (!result.success) {
+    showError(result.message || 'Verification failed. Please retake the photo.');
+    return;
+  }
+
+  showSuccess(result.data);
+}
+
+async function callGemini() {
+  const PROMPT = `
+You are a professional identity document verification engine.
+
+Two captured images of an identity document are attached (front side, then back side).
+The images have already passed a hardware sharpness and glare check, so do NOT
+evaluate camera quality. Your tasks:
+
+1. Confirm a physical government-issued ID card is present in each image.
+2. Confirm the first image is the FRONT (photo, name, ID number) and
+   the second is the BACK (barcode, signature strip, or secondary info).
+3. Extract all readable text fields via OCR.
+4. Return readabilityPass: true if name and ID number are readable.
+   Only return false if both are completely unreadable.
+5. Reject ONLY if: no document present, or both name and ID number are unreadable.
+
+Respond ONLY with a single valid JSON object — no markdown, no explanation:
+{
+  "documentDetected": boolean,
+  "documentType": "national_id"|"passport"|"drivers_licence"|"unknown"|null,
+  "readabilityPass": boolean,
+  "rejectReason": string|null,
+  "ocr": {
+    "fullName": string|null,
+    "idNumber": string|null,
+    "dateOfBirth": string|null,
+    "expiryDate": string|null,
+    "nationality": string|null,
+    "address": string|null,
+    "gender": string|null,
+    "issuingCountry": string|null
+  },
+  "confidence": {
+    "documentDetection": number,
+    "ocrAccuracy": number,
+    "overall": number
+  }
+}`;
+
+  try {
+    const body = {
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: PROMPT },
+          { inline_data: { mime_type: 'image/jpeg', data: frontImageB64 } },
+          { inline_data: { mime_type: 'image/jpeg', data: backImageB64  } },
+          { text: 'The first image is the FRONT side, the second is the BACK side.' },
+        ]
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+    };
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { success: false, message: `API error ${res.status}: ${err?.error?.message || res.statusText}` };
+    }
+
+    const data   = await res.json();
+    const raw    = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean  = raw.replace(/^```json\s*/i,'').replace(/```\s*$/i,'').trim();
+    const parsed = JSON.parse(clean);
+
+    if (!parsed.documentDetected || !parsed.readabilityPass) {
+      return {
+        success: false,
+        message: parsed.rejectReason || 'The document could not be verified. Please retake the photos.',
+      };
+    }
+    return { success: true, data: parsed };
+
+  } catch (e) {
+    return { success: false, message: 'Could not reach the verification service. Check your connection and try again.' };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function updateMetricUI(m) {
+  setBar('sharpness', m.sharpness);
+  setBar('glare',     m.glare);
+  setBar('align',     m.alignment);
+  setBar('bright',    m.brightness);
+}
+
+function setBar(id, val) {
+  const fill = document.getElementById('m-'+id);
+  const text = document.getElementById('mv-'+id);
+  if (!fill || !text) return;
+  fill.style.width = val + '%';
+  fill.style.background =
+    val >= 85 ? '#22C55E' :
+    val >= 60 ? '#F59E0B' : '#EF4444';
+  text.textContent = val + '%';
+}
+
+function setCorners(ready) {
+  document.getElementById('corners').classList.toggle('ready', ready);
+}
+
+function setStatus(main, hint) {
+  document.getElementById('status-main').textContent = main;
+  document.getElementById('status-hint').textContent = hint;
+}
+
+function updateShutterRing(pct, armed, countdown) {
+  const ring = document.getElementById('shutter-ring');
+  const arc  = document.getElementById('shutter-arc');
+  const cnt  = document.getElementById('shutter-count');
+  ring.classList.toggle('armed', armed);
+  const circumference = 2 * Math.PI * 20; // 125.6
+  arc.style.strokeDashoffset = circumference * (1 - pct);
+  cnt.textContent = countdown != null ? countdown : (armed ? '✓' : '–');
+}
+
+function buildHint(m) {
+  if (m.sharpness < T.SHARPNESS_MIN)
+    return { status: 'Hold still', hint: m.sharpness < 50 ? 'Image is blurry — hold your phone steady' : 'Almost sharp enough — hold still' };
+  if (m.glare < T.GLARE_MIN)
+    return { status: 'Glare detected', hint: 'Tilt the card or move away from direct light' };
+  if (m.alignment < 50)
+    return { status: 'Align the card', hint: 'Make sure all four corners are inside the frame' };
+  if (m.brightness < 40)
+    return { status: 'Too dark', hint: 'Move to a brighter area or turn on a light' };
+  return { status: 'Searching…', hint: 'Point the camera at your ID card' };
+}
+
+function updateScanLabels() {
+  const isFront = currentSide === 'front';
+  document.getElementById('scan-pill-text').textContent =
+    'National ID · ' + (isFront ? 'Front Side' : 'Back Side');
+  document.getElementById('scan-side-label').textContent =
+    isFront ? 'SCANNING FRONT SIDE' : 'SCANNING BACK SIDE';
+}
+
+function updateStepUI() {
+  const isFront = currentSide === 'front';
+  const isBack  = currentSide === 'back';
+
+  setStep('s1', isFront ? 'active' : 'done', isFront ? 'active' : 'done');
+  setStep('s2', isBack  ? 'active' : (isFront ? 'idle' : 'done'),
+               isBack   ? 'active' : (isFront ? ''     : 'done'));
+  document.getElementById('line1').classList.toggle('done', !isFront);
+}
+
+function setStep(id, circleState, labelState) {
+  const c = document.getElementById(id+'c');
+  const l = document.getElementById(id+'l');
+  c.className = 'step-circle ' + circleState;
+  l.className = 'step-label ' + (labelState || '');
+  if (id === 's1' && circleState === 'done') c.textContent = '✓';
+}
+
+function updatePreview(containerId, dataUrl, label) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = `<img src="${dataUrl}"/><div class="preview-label">${label}</div>`;
+}
+
+async function animateProcessStep(id, delay) {
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  el.querySelector('.pstep-icon').innerHTML = '<div class="pstep-spinner"></div>';
+  await sleep(delay);
+  el.classList.remove('active');
+  el.classList.add('done');
+  el.querySelector('.pstep-icon').innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#16A34A" stroke-width="2.5"><polyline points="3,8 6,11 13,4"/></svg>';
+}
+
+function showError(msg) {
+  document.getElementById('error-msg').textContent = msg;
+  showScreen('screen-error');
+}
+
+function showSuccess(data) {
+  // Step 3 active
+  document.getElementById('s3c').className = 'step-circle done';
+  document.getElementById('s3l').className = 'step-label done';
+  document.getElementById('line2').classList.add('done');
+
+  // OCR fields
+  const ocr = data?.ocr;
+  if (ocr) {
+    const fields = [
+      ['Full Name',    ocr.fullName],
+      ['ID Number',    ocr.idNumber],
+      ['Date of Birth',ocr.dateOfBirth],
+      ['Expiry Date',  ocr.expiryDate],
+      ['Nationality',  ocr.nationality],
+      ['Gender',       ocr.gender],
+    ].filter(([,v]) => v);
+
+    if (fields.length) {
+      const grid = document.getElementById('ocr-grid');
+      grid.innerHTML = fields.map(([l,v]) =>
+        `<div class="ocr-field"><div class="ocr-field-label">${l}</div><div class="ocr-field-value">${v}</div></div>`
+      ).join('');
+      document.getElementById('ocr-card').style.display = 'block';
+    }
+  }
+
+  showScreen('screen-success');
+}
+
+function retakeScan() {
+  // Retake whichever side we were on — do NOT auto-restart
+  currentSide = backImageB64 ? 'back' : 'front';
+  frontImageB64 = backImageB64 ? frontImageB64 : null;
+  backImageB64  = null;
+  openCamera();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOUND
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('sound-icon').style.opacity = soundEnabled ? '1' : '0.35';
+}
+
+function speak(text) {
+  if (!soundEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95; u.pitch = 1;
+  window.speechSynthesis.speak(u);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Show API notice on idle screen if no key set
+window.addEventListener('DOMContentLoaded', () => {
+  if (!GEMINI_API_KEY) {
+    // Don't show on load — only when they hit Start
+  }
+});
+</script>
+</body>
+</html>
